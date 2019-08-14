@@ -120,8 +120,7 @@ class Api
         } catch(Facebook\Exceptions\FacebookSDKException $e) {
             throw new \Exception('Facebook SDK returned an error: '.$e->getMessage());
         }
-        $graphNode = $response->getGraphNode();
 
-        return $graphNode['id'];
+        return $response;
     }
 }
