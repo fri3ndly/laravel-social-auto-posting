@@ -13,7 +13,7 @@
 
 namespace Toolkito\Larasap\Twitter;
 
-require_once __DIR__. '/OAuth.php';
+require_once __DIR__ . '/OAuth.php';
 use Illuminate\Support\Facades\Config;
 
 /**
@@ -90,6 +90,63 @@ class Api
         );
     }
 
+    public static function sendVideo($message, $video = '', $options = [])
+    {
+        self::initialize();
+
+        // Init
+        $res = self::request(
+            'https://upload.twitter.com/1.1/media/upload.json',
+            'POST',
+            [
+                "command" => "INIT",
+                "total_bytes" => (int)filesize($video),
+                'media_type' => 'video/mp4',
+            ],
+            ['media' => $video]
+        );
+
+        $media_id[] = $res->media_id_string;
+
+
+        // Append
+
+        $fp = fopen($video, 'r');
+        $segment_id = 0;
+        while (!feof($fp)) {
+            $chunk = fread($fp, 1048576); // 1MB per chunk for this sample
+
+            $res = self::request(
+                'https://upload.twitter.com/1.1/media/upload.json',
+                'POST',
+                [
+                    "command" => "APPEND",
+                    "media_id" => $media_id,
+                    'media_data' => base64_encode($chunk),
+                    "segment_index" => $segment_id
+                ]
+            );
+            $segment_id++;
+        }
+
+        // Finalise
+        $res = self::request(
+            'https://upload.twitter.com/1.1/media/upload.json',
+            'POST',
+            [
+                "command" => "FINALIZE",
+                "media_id" => $media_id,
+            ]
+        );
+
+
+        return self::request(
+            'statuses/update',
+            'POST',
+            $options + ['status' => $message, 'media_ids' => $media_id ?: null]
+        );
+    }
+
     /**
      * Process HTTP request.
      * @param  string  URL or twitter command
@@ -110,7 +167,7 @@ class Api
 
         $hasCURLFile = class_exists('CURLFile', false) && defined('CURLOPT_SAFE_UPLOAD');
 
-        foreach ((array) $data as $key => $val) {
+        foreach ((array)$data as $key => $val) {
             if ($val === null) {
                 unset($data[$key]);
             } elseif ($files && !$hasCURLFile && substr($val, 0, 1) === '@') {
@@ -118,7 +175,7 @@ class Api
             }
         }
 
-        foreach ((array) $files as $key => $file) {
+        foreach ((array)$files as $key => $file) {
             if (!is_file($file)) {
                 throw new TwitterException("Cannot read the file $file. Check if file exists on disk and check its permissions.");
             }

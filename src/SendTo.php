@@ -95,6 +95,11 @@ class SendTo
         return TwitterApi::sendMessage($message, $media, $options);
     }
 
+    public static function TwitterVideo($message, $media = [], $options = [])
+    {
+        return TwitterApi::sendVideo($message, $media, $options);
+    }
+
     /**
      * Send message to Facebook page
      *
